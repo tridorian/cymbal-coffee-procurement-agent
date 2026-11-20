@@ -35,10 +35,10 @@
 - [x] Live heartbeat status banner (`🟢 Backend Online` / `🔴 Backend Offline`) in `local_tester/index.html`.
 
 ### 5. Architectural Decision Records & CI/CD Pipeline
-- [x] **ADR-001**: [ADR-001: A2UI Schema Compatibility & Renderer Design](file:///var/home/wtg/Repos/cymbal-coffee-procurement-agent/docs/adr/ADR-001-A2UI-Schema-Compatibility-and-Renderer-Design.md)
-- [x] **ADR-002**: [ADR-002: Cloud Run Health Probing & Custom Catalog Visualizations](file:///var/home/wtg/Repos/cymbal-coffee-procurement-agent/docs/adr/ADR-002-Cloud-Run-Health-Probing-and-Custom-Catalog-Visualizations.md)
-- [x] **ADR-003**: [ADR-003: Automated CI/CD Deployment via GitHub Actions](file:///var/home/wtg/Repos/cymbal-coffee-procurement-agent/docs/adr/ADR-003-Automated-CI-CD-Deployment-via-GitHub-Actions.md)
-- [x] **Development & Deployment Flow Guide**: [DEVELOPMENT_AND_DEPLOYMENT_FLOW.md](file:///var/home/wtg/Repos/cymbal-coffee-procurement-agent/docs/DEVELOPMENT_AND_DEPLOYMENT_FLOW.md)
+- [x] **ADR-001**: [ADR-001: A2UI Schema Compatibility & Renderer Design](adr/ADR-001-A2UI-Schema-Compatibility-and-Renderer-Design.md)
+- [x] **ADR-002**: [ADR-002: Cloud Run Health Probing & Custom Catalog Visualizations](adr/ADR-002-Cloud-Run-Health-Probing-and-Custom-Catalog-Visualizations.md)
+- [x] **ADR-003**: [ADR-003: Automated CI/CD Deployment via GitHub Actions](adr/ADR-003-Automated-CI-CD-Deployment-via-GitHub-Actions.md)
+- [x] **Development & Deployment Flow Guide**: [DEVELOPMENT_AND_DEPLOYMENT_FLOW.md](DEVELOPMENT_AND_DEPLOYMENT_FLOW.md)
 - [x] **GitHub Actions Workflow**: Updated `.github/workflows/deploy.yml` with automated Cloud Run deployment and `agents-cli publish gemini-enterprise` registration upon merge to `main`.
 
 ---

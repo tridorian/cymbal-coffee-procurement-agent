@@ -9,16 +9,16 @@ For historical milestone notes and demo architecture details, also see [`docs/PR
   - `.github/workflows/pr-checks.yml`: `actions/checkout`, `astral-sh/setup-uv`, `google-github-actions/auth`
   - `.github/workflows/deploy.yml`: `actions/checkout`, `google-github-actions/auth`, `google-github-actions/setup-gcloud`
 - [x] **Add `concurrency` blocks** to `.github/workflows/pr-checks.yml` (with `cancel-in-progress: true` on pull requests) and `.github/workflows/deploy.yml` (serialized deploys without canceling an active rollout).
-- [ ] **Migrate GCP CI authentication to Workload Identity Federation (WIF)** instead of static `secrets.GCP_CREDENTIALS` JSON keys where supported.
+- [x] **Migrate GCP CI authentication to Workload Identity Federation (WIF)** instead of static `secrets.GCP_CREDENTIALS` JSON keys where supported.
 - [ ] **Run `actionlint` in CI** so workflow regressions are caught automatically on every pull request.
 
 ## Supply-Chain, SBOM & OSS Compliance
 
-- [ ] **Add automated secret scanning (`gitleaks`)** to `.github/workflows/pr-checks.yml`.
+- [x] **Add automated secret scanning (`gitleaks`)** to `.github/workflows/pr-checks.yml`.
 - [ ] **Generate and scan SBOMs (`syft` + `grype`)** for Python dependencies (`uv.lock`) and the production `Dockerfile` container image during CI/release builds.
 - [ ] **Enforce SPDX license headers** (`SPDX-License-Identifier: Apache-2.0`) on Python source files and scripts using `addlicense -check -l apache` or `reuse lint`.
 - [ ] **Enable Dependabot or Renovate** for `uv` dependencies, Docker base images, and GitHub Actions updates.
-- [ ] **Update package metadata in `pyproject.toml`** (license field `Apache-2.0`, repository description, and maintainer metadata).
+- [x] **Update package metadata in `pyproject.toml`** (license field `Apache-2.0`, repository description, and maintainer metadata).
 
 ## Cloud Run & Gemini Enterprise Configuration Hygiene
 
@@ -30,4 +30,4 @@ For historical milestone notes and demo architecture details, also see [`docs/PR
 ## Application & Documentation Follow-Ups
 
 - [ ] **Multi-Tenant Store Telemetry Scaling**: Extend `STORE_TELEMETRY` to support additional regional branches (carried forward from `docs/PROJECT_STATUS_AND_TODO.md`).
-- [ ] **Replace machine-specific `file://` links** in `docs/PROJECT_STATUS_AND_TODO.md` with repo-relative Markdown links.
+- [x] **Replace machine-specific `file://` links** in `docs/PROJECT_STATUS_AND_TODO.md` and `docs/DEVELOPMENT_AND_DEPLOYMENT_FLOW.md` with repo-relative Markdown links.

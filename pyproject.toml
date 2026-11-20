@@ -1,9 +1,11 @@
 [project]
 name = "cymbal-coffee-procurement-agent"
 version = "0.1.0"
-description = ""
+description = "Cymbal Coffee Intelligent Procurement & Inventory Automation Agent (ADK, A2A, A2UI & MCP Apps for Gemini Enterprise)"
+readme = "README.md"
+license = { text = "Apache-2.0" }
 authors = [
-    {name = "Your Name", email = "your@email.com"},
+    { name = "Cymbal Coffee Reference Maintainers" },
 ]
 
 dependencies = [
