@@ -78,6 +78,6 @@ Once the Pull Request is reviewed and merged into `main`, GitHub Actions automat
 ---
 
 ## Related ADR Documents
-- [ADR-001: A2UI Schema Compatibility & Renderer Design](file:///var/home/wtg/Repos/cymbal-coffee-procurement-agent/docs/adr/ADR-001-A2UI-Schema-Compatibility-and-Renderer-Design.md)
-- [ADR-002: Cloud Run Health Probing & Custom Catalog Visualizations](file:///var/home/wtg/Repos/cymbal-coffee-procurement-agent/docs/adr/ADR-002-Cloud-Run-Health-Probing-and-Custom-Catalog-Visualizations.md)
-- [ADR-003: Automated CI/CD Deployment via GitHub Actions](file:///var/home/wtg/Repos/cymbal-coffee-procurement-agent/docs/adr/ADR-003-Automated-CI-CD-Deployment-via-GitHub-Actions.md)
+- [ADR-001: A2UI Schema Compatibility & Renderer Design](adr/ADR-001-A2UI-Schema-Compatibility-and-Renderer-Design.md)
+- [ADR-002: Cloud Run Health Probing & Custom Catalog Visualizations](adr/ADR-002-Cloud-Run-Health-Probing-and-Custom-Catalog-Visualizations.md)
+- [ADR-003: Automated CI/CD Deployment via GitHub Actions](adr/ADR-003-Automated-CI-CD-Deployment-via-GitHub-Actions.md)
