@@ -4,30 +4,48 @@ on:
   push:
     branches: [ main ]
 
-env:
-  PROJECT_ID: hackathon-y26
-  PROJECT_NUMBER: '922201496337'
-  REGION: us-central1
-  SERVICE: cymbal-coffee-procurement-dashboard
-  APP_URL: https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app
-  GE_APP_ID: cymbal-coffee-roasters-dem_1785169638752
-  GE_AGENT_ID: '12977200261735696190'
-  GE_LOCATION: global
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       id-token: write
+    env:
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'hackathon-y26' }}
+      PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER || '922201496337' }}
+      REGION: ${{ vars.GCP_REGION || 'us-central1' }}
+      SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'cymbal-coffee-procurement-dashboard' }}
+      APP_URL: ${{ vars.APP_URL || 'https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app' }}
+      GE_APP_ID: ${{ vars.GE_APP_ID || 'cymbal-coffee-roasters-dem_1785169638752' }}
+      GE_AGENT_ID: ${{ vars.GE_AGENT_ID || '12977200261735696190' }}
+      GE_LOCATION: ${{ vars.GE_LOCATION || 'global' }}
+      GCP_CREDENTIALS_CONFIGURED: ${{ secrets.GCP_CREDENTIALS != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: google-github-actions/auth@v2
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_SERVICE_ACCOUNT != '' }}
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
+        with:
+          workload_identity_provider: '${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{ vars.GCP_SERVICE_ACCOUNT }}'
+
+      - name: Authenticate to Google Cloud (Credentials Fallback)
+        if: ${{ (vars.GCP_WORKLOAD_IDENTITY_PROVIDER == '' || vars.GCP_SERVICE_ACCOUNT == '') && env.GCP_CREDENTIALS_CONFIGURED == 'true' }}
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
 
       - name: Deploy to Cloud Run
         run: |

@@ -5,10 +5,10 @@ For historical milestone notes and demo architecture details, also see [`docs/PR
 
 ## CI/CD & Workflow Hardening
 
-- [ ] **Pin all third-party GitHub Actions to full 40-char commit SHAs** (with version comments) across workflows:
+- [x] **Pin all third-party GitHub Actions to full 40-char commit SHAs** (with version comments) across workflows:
   - `.github/workflows/pr-checks.yml`: `actions/checkout`, `astral-sh/setup-uv`, `google-github-actions/auth`
   - `.github/workflows/deploy.yml`: `actions/checkout`, `google-github-actions/auth`, `google-github-actions/setup-gcloud`
-- [ ] **Add `concurrency` blocks** to `.github/workflows/pr-checks.yml` (with `cancel-in-progress: true` on pull requests) and `.github/workflows/deploy.yml` (serialized deploys without canceling an active rollout).
+- [x] **Add `concurrency` blocks** to `.github/workflows/pr-checks.yml` (with `cancel-in-progress: true` on pull requests) and `.github/workflows/deploy.yml` (serialized deploys without canceling an active rollout).
 - [ ] **Migrate GCP CI authentication to Workload Identity Federation (WIF)** instead of static `secrets.GCP_CREDENTIALS` JSON keys where supported.
 - [ ] **Run `actionlint` in CI** so workflow regressions are caught automatically on every pull request.
 

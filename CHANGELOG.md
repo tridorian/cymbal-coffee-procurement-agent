@@ -14,9 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added root `TODO.md` tracking remaining CI/CD hardening (SHA-pinning GitHub Actions), dependency/SBOM checks, and environment-driven Cloud Run / Gemini Enterprise configuration.
 - Added `CHANGELOG.md` following the Keep a Changelog format.
 
+### Changed
+
+- Upgraded default `GEMINI_MODEL` in `app/agent.py` from deprecated `gemini-3.5-flash` to `gemini-3.8-flash` ahead of Dec 1, 2026 Gemini 4 pricing transition.
+
 ### Security
 
-- Added an explicit least-privilege top-level `permissions: { contents: read }` block to `.github/workflows/pr-checks.yml`.
+- Added explicit least-privilege top-level `permissions: { contents: read }` and `concurrency` blocks to `.github/workflows/pr-checks.yml` and `.github/workflows/deploy.yml`.
+- Pinned all GitHub Actions (`actions/checkout`, `astral-sh/setup-uv`, `google-github-actions/auth`, `google-github-actions/setup-gcloud`) to verified 40-character commit SHAs on `ubuntu-24.04` runners and added keyless Workload Identity Federation (`vars.GCP_WORKLOAD_IDENTITY_PROVIDER`) support.
 
 ## [0.1.0] - 2026-07-31
 

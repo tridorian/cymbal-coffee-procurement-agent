@@ -9,22 +9,42 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
-      GOOGLE_CLOUD_PROJECT: 'hackathon-y26'
-      GOOGLE_CLOUD_LOCATION: 'global'
+      GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT_ID || 'hackathon-y26' }}
+      GOOGLE_CLOUD_LOCATION: ${{ vars.GCP_REGION || 'global' }}
       GOOGLE_GENAI_USE_VERTEXAI: 'true'
-      GCP_PROJECT: 'hackathon-y26'
+      GCP_PROJECT: ${{ vars.GCP_PROJECT_ID || 'hackathon-y26' }}
+      GCP_CREDENTIALS_CONFIGURED: ${{ secrets.GCP_CREDENTIALS != '' }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-        with: { enable-cache: true }
-      - run: uv python install 3.12
-      - run: uv sync --all-groups
-      - run: uvx ruff check .
-      - uses: google-github-actions/auth@v2
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
+
+      - name: Sync dependencies
+        run: uv sync --all-groups
+
+      - name: Lint with Ruff
+        run: uvx ruff check .
+
+      - name: Authenticate to Google Cloud
+        if: ${{ env.GCP_CREDENTIALS_CONFIGURED == 'true' }}
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
-      - run: touch .env && uv run pytest tests/unit/ --cov=app --cov-fail-under=80
+
+      - name: Run unit tests with coverage gate
+        run: touch .env && uv run pytest tests/unit/ --cov=app --cov-fail-under=80

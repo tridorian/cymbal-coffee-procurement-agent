@@ -15,7 +15,7 @@ Please **do not** report security vulnerabilities through public GitHub issues, 
 
 Instead, report potential vulnerabilities privately using one of the following methods:
 
-1. **GitHub Private Vulnerability Reporting (Preferred):** Navigate to the **Security** tab of `wtg-codes/cymbal-coffee-procurement-agent` and click **Report a vulnerability** to open a private security advisory.
+1. **GitHub Private Vulnerability Reporting (Preferred):** Navigate to the **Security** tab of `tridorian/cymbal-coffee-procurement-agent` and click **Report a vulnerability** to open a private security advisory.
 2. **Direct Maintainer Contact:** If private vulnerability reporting is not enabled, contact the repository maintainer directly through GitHub (`@wtg-codes`) without posting exploit details or sensitive data publicly.
 
 ### What to Include
