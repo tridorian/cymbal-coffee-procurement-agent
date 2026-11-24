@@ -112,7 +112,7 @@ jobs:
           READY_STATUS="$(gcloud run services describe "${SERVICE}" \
             --region "${REGION}" \
             --project "${PROJECT_ID}" \
-            --format='value(status.conditions[?type="Ready"].status)')"
+            --format=json | jq -r '.status.conditions[] | select(.type == "Ready") | .status')"
           echo "Cloud Run Ready status: ${READY_STATUS}"
           if [ "${READY_STATUS}" != "True" ]; then
             echo "ERROR: Cloud Run service ${SERVICE} is not Ready"
