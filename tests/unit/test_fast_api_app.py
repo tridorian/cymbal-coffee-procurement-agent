@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-os.environ["GOOGLE_CLOUD_PROJECT"] = "hackathon-y26"
-os.environ["GCP_PROJECT"] = "hackathon-y26"
+os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "gemini-ent-playground")
+os.environ.setdefault("GCP_PROJECT", "gemini-ent-playground")
 
 from fastapi.testclient import TestClient
 

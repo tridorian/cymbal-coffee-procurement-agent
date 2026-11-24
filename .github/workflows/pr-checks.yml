@@ -20,10 +20,10 @@ jobs:
       contents: read
       id-token: write
     env:
-      GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT_ID || 'hackathon-y26' }}
+      GOOGLE_CLOUD_PROJECT: ${{ vars.GCP_PROJECT_ID || 'gemini-ent-playground' }}
       GOOGLE_CLOUD_LOCATION: ${{ vars.GCP_REGION || 'global' }}
       GOOGLE_GENAI_USE_VERTEXAI: 'true'
-      GCP_PROJECT: ${{ vars.GCP_PROJECT_ID || 'hackathon-y26' }}
+      GCP_PROJECT: ${{ vars.GCP_PROJECT_ID || 'gemini-ent-playground' }}
       GCP_CREDENTIALS_CONFIGURED: ${{ secrets.GCP_CREDENTIALS != '' }}
     steps:
       - name: Checkout repository

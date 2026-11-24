@@ -3,6 +3,7 @@ name: Deploy to Cloud Run & Sync Gemini Enterprise
 on:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -18,28 +19,42 @@ jobs:
       contents: read
       id-token: write
     env:
-      PROJECT_ID: ${{ vars.GCP_PROJECT_ID || 'hackathon-y26' }}
-      PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER || '922201496337' }}
+      PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
       REGION: ${{ vars.GCP_REGION || 'us-central1' }}
       SERVICE: ${{ vars.CLOUD_RUN_SERVICE || 'cymbal-coffee-procurement-dashboard' }}
-      APP_URL: ${{ vars.APP_URL || 'https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app' }}
-      GE_APP_ID: ${{ vars.GE_APP_ID || 'cymbal-coffee-roasters-dem_1785169638752' }}
-      GE_AGENT_ID: ${{ vars.GE_AGENT_ID || '12977200261735696190' }}
+      APP_URL: ${{ vars.APP_URL }}
+      GE_APP_ID: ${{ vars.GE_APP_ID }}
+      GE_AGENT_ID: ${{ vars.GE_AGENT_ID }}
       GE_LOCATION: ${{ vars.GE_LOCATION || 'global' }}
+      GCP_WIF_CONFIGURED: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_SERVICE_ACCOUNT != '' }}
       GCP_CREDENTIALS_CONFIGURED: ${{ secrets.GCP_CREDENTIALS != '' }}
     steps:
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${PROJECT_ID}" ] || [ -z "${PROJECT_NUMBER}" ]; then
+            echo "::error::Missing required repository variables: GCP_PROJECT_ID and GCP_PROJECT_NUMBER must be configured."
+            exit 1
+          fi
+          if [ "${GCP_WIF_CONFIGURED}" != "true" ] && [ "${GCP_CREDENTIALS_CONFIGURED}" != "true" ]; then
+            echo "::error::Missing GCP authentication. Configure GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT (recommended) or secrets.GCP_CREDENTIALS."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Authenticate to Google Cloud (Workload Identity Federation)
-        if: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_SERVICE_ACCOUNT != '' }}
+        if: ${{ env.GCP_WIF_CONFIGURED == 'true' }}
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           workload_identity_provider: '${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{ vars.GCP_SERVICE_ACCOUNT }}'
 
       - name: Authenticate to Google Cloud (Credentials Fallback)
-        if: ${{ (vars.GCP_WORKLOAD_IDENTITY_PROVIDER == '' || vars.GCP_SERVICE_ACCOUNT == '') && env.GCP_CREDENTIALS_CONFIGURED == 'true' }}
+        if: ${{ env.GCP_WIF_CONFIGURED != 'true' && env.GCP_CREDENTIALS_CONFIGURED == 'true' }}
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2
         with:
           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
@@ -48,67 +63,132 @@ jobs:
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2
 
       - name: Deploy to Cloud Run
+        shell: bash
         run: |
-          gcloud run deploy ${{ env.SERVICE }} \
+          set -euo pipefail
+          ENV_VARS="GOOGLE_CLOUD_PROJECT=${PROJECT_ID},GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=true"
+          if [ -n "${APP_URL}" ]; then
+            ENV_VARS="${ENV_VARS},APP_URL=${APP_URL}"
+          fi
+
+          gcloud run deploy "${SERVICE}" \
             --source . \
-            --region ${{ env.REGION }} \
-            --project ${{ env.PROJECT_ID }} \
-            --set-env-vars GOOGLE_CLOUD_PROJECT=${{ env.PROJECT_ID }},GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=true,APP_URL=${{ env.APP_URL }} \
-            --set-secrets OAUTH_CLIENT_ID=iap-oauth-client-id:latest \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --set-env-vars "${ENV_VARS}" \
             --allow-unauthenticated
 
+          LIVE_URL="$(gcloud run services describe "${SERVICE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --format='value(status.url)')"
+          RESOLVED_APP_URL="${APP_URL:-$LIVE_URL}"
+          RESOLVED_APP_URL="${RESOLVED_APP_URL%/}"
+          echo "RESOLVED_APP_URL=${RESOLVED_APP_URL}" >> "${GITHUB_ENV}"
+          echo "Deployed Cloud Run service URL: ${RESOLVED_APP_URL}"
+
       - name: Wait for Cloud Run to be healthy
+        shell: bash
         run: |
-          sleep 15
+          set -euo pipefail
+          sleep 10
           curl --retry 5 --retry-delay 5 --retry-connrefused -sf \
-            "${{ env.APP_URL }}/health" | jq .
+            "${RESOLVED_APP_URL}/health" | jq .
 
       - name: Fetch live agent card and register in Gemini Enterprise
+        if: ${{ env.GE_APP_ID != '' }}
+        shell: bash
         run: |
+          set -euo pipefail
+          DISPLAY_NAME="Cymbal Coffee Procurement Agent"
+          DESCRIPTION="Intelligent procurement and inventory agent for Cymbal Coffee Roasters. Monitors real-time IoT telemetry, detects stockouts, creates purchase orders, and renders interactive A2UI cards."
+
           # Fetch the live agent card from the deployed Cloud Run service
-          AGENT_CARD=$(curl -sf "${{ env.APP_URL }}/a2a/app/.well-known/agent-card.json")
+          AGENT_CARD="$(curl -sf "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json")"
           echo "Agent card fetched:"
-          echo "$AGENT_CARD" | jq .
+          echo "${AGENT_CARD}" | jq .
 
           # Ensure the url field in the card points to the A2A RPC path (not agent-card path)
-          AGENT_CARD=$(echo "$AGENT_CARD" | jq --arg url "${{ env.APP_URL }}/a2a/app" '.url = $url')
+          AGENT_CARD="$(echo "${AGENT_CARD}" | jq --arg url "${RESOLVED_APP_URL}/a2a/app" '.url = $url')"
 
           # Serialize to an escaped JSON string for the jsonAgentCard field
-          JSON_AGENT_CARD=$(echo "$AGENT_CARD" | jq -c . | jq -Rs .)
+          JSON_AGENT_CARD="$(echo "${AGENT_CARD}" | jq -c . | jq -Rs .)"
 
-          # Get access token
-          ACCESS_TOKEN=$(gcloud auth print-access-token)
+          ACCESS_TOKEN="$(gcloud auth print-access-token)"
+          AGENTS_BASE="https://discoveryengine.googleapis.com/v1alpha/projects/${PROJECT_NUMBER}/locations/${GE_LOCATION}/collections/default_collection/engines/${GE_APP_ID}/assistants/default_assistant/agents"
 
-          # PATCH the existing GE agent registration with the updated agent card
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
-            -H "Content-Type: application/json" \
-            -H "X-Goog-User-Project: ${{ env.PROJECT_NUMBER }}" \
-            "https://discoveryengine.googleapis.com/v1alpha/projects/${{ env.PROJECT_NUMBER }}/locations/${{ env.GE_LOCATION }}/collections/default_collection/engines/${{ env.GE_APP_ID }}/assistants/default_assistant/agents/${{ env.GE_AGENT_ID }}?updateMask=displayName,description,a2aAgentDefinition" \
-            -d "{
-              \"displayName\": \"Cymbal Coffee Procurement Agent\",
-              \"description\": \"Intelligent procurement and inventory agent for Cymbal Coffee Roasters. Monitors real-time IoT telemetry, detects stockouts, creates purchase orders, and renders interactive A2UI cards.\",
-              \"a2aAgentDefinition\": {
-                \"jsonAgentCard\": $JSON_AGENT_CARD
+          TARGET_AGENT_ID="${GE_AGENT_ID}"
+          if [ -z "${TARGET_AGENT_ID}" ]; then
+            EXISTING_LIST="$(curl -sf \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "X-Goog-User-Project: ${PROJECT_NUMBER}" \
+              "${AGENTS_BASE}")"
+            TARGET_AGENT_ID="$(echo "${EXISTING_LIST}" | jq -r --arg name "${DISPLAY_NAME}" '(.agents // [])[] | select(.displayName == $name) | .name | split("/") | last' | head -n1)"
+          fi
+
+          PAYLOAD="$(jq -n \
+            --arg displayName "${DISPLAY_NAME}" \
+            --arg description "${DESCRIPTION}" \
+            --argjson jsonAgentCard "${JSON_AGENT_CARD}" \
+            '{
+              displayName: $displayName,
+              description: $description,
+              a2aAgentDefinition: {
+                jsonAgentCard: $jsonAgentCard
               }
-            }")
+            }')"
 
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          BODY=$(echo "$RESPONSE" | head -n -1)
-          echo "GE Registration response ($HTTP_CODE):"
-          echo "$BODY" | jq . 2>/dev/null || echo "$BODY"
+          if [ -n "${TARGET_AGENT_ID}" ]; then
+            echo "Updating existing Gemini Enterprise agent: ${TARGET_AGENT_ID}"
+            RESPONSE="$(curl -s -w "\n%{http_code}" -X PATCH \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -H "X-Goog-User-Project: ${PROJECT_NUMBER}" \
+              "${AGENTS_BASE}/${TARGET_AGENT_ID}?updateMask=displayName,description,a2aAgentDefinition" \
+              -d "${PAYLOAD}")"
+          else
+            echo "Creating new Gemini Enterprise agent in engine ${GE_APP_ID}..."
+            RESPONSE="$(curl -s -w "\n%{http_code}" -X POST \
+              -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -H "X-Goog-User-Project: ${PROJECT_NUMBER}" \
+              "${AGENTS_BASE}" \
+              -d "${PAYLOAD}")"
+          fi
 
-          if [ "$HTTP_CODE" -ge 400 ]; then
-            echo "ERROR: GE registration failed with HTTP $HTTP_CODE"
+          HTTP_CODE="$(echo "${RESPONSE}" | tail -n1)"
+          BODY="$(echo "${RESPONSE}" | head -n -1)"
+          echo "GE Registration response (${HTTP_CODE}):"
+          echo "${BODY}" | jq . 2>/dev/null || echo "${BODY}"
+
+          if [ "${HTTP_CODE}" -ge 400 ]; then
+            echo "ERROR: GE registration failed with HTTP ${HTTP_CODE}"
             exit 1
           fi
 
+          if [ -z "${TARGET_AGENT_ID}" ]; then
+            TARGET_AGENT_ID="$(echo "${BODY}" | jq -r '.name | split("/") | last')"
+          fi
+          echo "RESOLVED_GE_AGENT_ID=${TARGET_AGENT_ID}" >> "${GITHUB_ENV}"
+          echo "Registered Gemini Enterprise Agent ID: ${TARGET_AGENT_ID}"
+
       - name: Ensure ALL_USERS Sharing Scope
+        if: ${{ env.GE_APP_ID != '' && env.RESOLVED_GE_AGENT_ID != '' }}
+        shell: bash
         run: |
-          ACCESS_TOKEN=$(gcloud auth print-access-token)
-          curl -s -X PATCH \
-            -H "Authorization: Bearer $ACCESS_TOKEN" \
+          set -euo pipefail
+          ACCESS_TOKEN="$(gcloud auth print-access-token)"
+          RESPONSE="$(curl -s -w "\n%{http_code}" -X PATCH \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
             -H "Content-Type: application/json" \
-            -H "X-Goog-User-Project: ${{ env.PROJECT_NUMBER }}" \
-            "https://discoveryengine.googleapis.com/v1alpha/projects/${{ env.PROJECT_NUMBER }}/locations/${{ env.GE_LOCATION }}/collections/default_collection/engines/${{ env.GE_APP_ID }}/assistants/default_assistant/agents/${{ env.GE_AGENT_ID }}?updateMask=sharingConfig" \
-            -d '{"sharingConfig": {"scope": "ALL_USERS"}}' | jq .
+            -H "X-Goog-User-Project: ${PROJECT_NUMBER}" \
+            "https://discoveryengine.googleapis.com/v1alpha/projects/${PROJECT_NUMBER}/locations/${GE_LOCATION}/collections/default_collection/engines/${GE_APP_ID}/assistants/default_assistant/agents/${RESOLVED_GE_AGENT_ID}?updateMask=sharingConfig" \
+            -d '{"sharingConfig": {"scope": "ALL_USERS"}}')"
+          HTTP_CODE="$(echo "${RESPONSE}" | tail -n1)"
+          BODY="$(echo "${RESPONSE}" | head -n -1)"
+          echo "Sharing config response (${HTTP_CODE}):"
+          echo "${BODY}" | jq . 2>/dev/null || echo "${BODY}"
+          if [ "${HTTP_CODE}" -ge 400 ]; then
+            echo "ERROR: Failed to set ALL_USERS sharing scope (HTTP ${HTTP_CODE})"
+            exit 1
+          fi

@@ -66,8 +66,8 @@ def start_server() -> subprocess.Popen[str]:
         "8000",
     ]
     env = os.environ.copy()
-    env["GOOGLE_CLOUD_PROJECT"] = "hackathon-y26"
-    env["GCP_PROJECT"] = "hackathon-y26"
+    env.setdefault("GOOGLE_CLOUD_PROJECT", "gemini-ent-playground")
+    env.setdefault("GCP_PROJECT", "gemini-ent-playground")
     env["MOCK_LLM_FOR_TEST"] = "TRUE"
 
     process = subprocess.Popen(

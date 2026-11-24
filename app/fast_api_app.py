@@ -30,7 +30,7 @@ from app.tools.telemetry import (
 
 load_dotenv()
 if not os.getenv("GOOGLE_CLOUD_PROJECT"):
-    os.environ["GOOGLE_CLOUD_PROJECT"] = "hackathon-y26"
+    os.environ["GOOGLE_CLOUD_PROJECT"] = "gemini-ent-playground"
 
 
 def _configured_app_url() -> str | None:
@@ -51,7 +51,7 @@ def _resolve_app_url(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 vertexai.init(
-    project=os.getenv("GOOGLE_CLOUD_PROJECT", "hackathon-y26"),
+    project=os.getenv("GOOGLE_CLOUD_PROJECT", "gemini-ent-playground"),
     location=os.getenv("GOOGLE_CLOUD_LOCATION", "global"),
 )
 
@@ -71,7 +71,7 @@ except Exception:
     mock_creds.quota_project_id = None
     google.auth.default = lambda *args, **kwargs: (
         mock_creds,
-        os.getenv("GOOGLE_CLOUD_PROJECT", "hackathon-y26"),
+        os.getenv("GOOGLE_CLOUD_PROJECT", "gemini-ent-playground"),
     )
     logger = logging.getLogger(__name__)
 
