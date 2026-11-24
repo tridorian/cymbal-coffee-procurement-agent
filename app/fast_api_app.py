@@ -119,8 +119,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app_url=_configured_app_url(),
     )
 
-    # Auto-start the simulation so the backend always has live data on boot
-    start_simulation(duration_minutes=120)
+    # Start in IDLE / standby mode; operators wake the 60-minute demo session
+    # from the dashboard so Cloud Run can scale to zero when inactive.
 
     yield
 
@@ -138,6 +138,17 @@ app: FastAPI = get_fast_api_app(
 
 app.title = "cymbal-coffee-procurement-agent"
 app.description = "API for interacting with the Agent cymbal-coffee-procurement-agent"
+
+# Remove ADK's default "/" -> "/dev-ui/" redirect so "/" serves the Cymbal Coffee Dashboard
+# directly (the ADK Dev UI remains reachable at "/dev-ui/").
+app.router.routes = [
+    route
+    for route in app.router.routes
+    if not (
+        getattr(route, "path", None) == "/"
+        and "GET" in getattr(route, "methods", set())
+    )
+]
 
 
 @app.middleware("http")
@@ -207,7 +218,7 @@ def get_dashboard_data() -> dict:
 
 
 class StartSimRequest(BaseModel):
-    duration_minutes: int = 120
+    duration_minutes: int = 60
 
 
 @app.post("/api/dashboard/simulation/start")

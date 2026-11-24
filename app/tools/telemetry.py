@@ -91,8 +91,8 @@ def tick_simulation() -> None:
         SIMULATION_STATE["total_orders_processed"] = len(orders) * 18
 
 
-def start_simulation(duration_minutes: int = 120) -> dict[str, Any]:
-    """Start synthetic demo simulation mode with a max 2-hour auto-timeout."""
+def start_simulation(duration_minutes: int = 60) -> dict[str, Any]:
+    """Start synthetic demo simulation mode with an auto-timeout (default 60 min, max 2h)."""
     duration_minutes = min(max(1, duration_minutes), 120)  # Cap at 120 mins (2h max)
     now = datetime.datetime.now(datetime.UTC)
     expires_at = now + datetime.timedelta(minutes=duration_minutes)
