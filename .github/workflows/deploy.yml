@@ -89,8 +89,12 @@ jobs:
             --format='value(status.url)')"
           RESOLVED_APP_URL="${APP_URL:-$LIVE_URL}"
           RESOLVED_APP_URL="${RESOLVED_APP_URL%/}"
+          IAP_CLIENT_ID="$(curl -sI "${RESOLVED_APP_URL}/health" | grep -i '^location:' | sed -n 's/.*client_id=\([^&[:space:]]*\).*/\1/p' | tr -d '\r' || true)"
+          TOKEN_AUDIENCE="${IAP_CLIENT_ID:-$RESOLVED_APP_URL}"
           echo "RESOLVED_APP_URL=${RESOLVED_APP_URL}" >> "${GITHUB_ENV}"
+          echo "TOKEN_AUDIENCE=${TOKEN_AUDIENCE}" >> "${GITHUB_ENV}"
           echo "Deployed Cloud Run service URL: ${RESOLVED_APP_URL}"
+          echo "ID Token audience: ${TOKEN_AUDIENCE}"
 
       - name: Wait for Cloud Run to be healthy
         shell: bash
@@ -98,9 +102,9 @@ jobs:
           set -euo pipefail
           sleep 10
           if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
-            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${RESOLVED_APP_URL}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${TOKEN_AUDIENCE}")"
           else
-            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${TOKEN_AUDIENCE}")"
           fi
           curl --retry 5 --retry-delay 5 --retry-connrefused -sf \
             -H "Authorization: Bearer ${ID_TOKEN}" \
@@ -116,9 +120,9 @@ jobs:
 
           # Fetch the live agent card from the deployed Cloud Run service
           if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
-            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${RESOLVED_APP_URL}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${TOKEN_AUDIENCE}")"
           else
-            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${TOKEN_AUDIENCE}")"
           fi
           AGENT_CARD="$(curl -sf -H "Authorization: Bearer ${ID_TOKEN}" "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json")"
           echo "Agent card fetched:"
