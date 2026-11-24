@@ -27,6 +27,7 @@ jobs:
       GE_APP_ID: ${{ vars.GE_APP_ID }}
       GE_AGENT_ID: ${{ vars.GE_AGENT_ID }}
       GE_LOCATION: ${{ vars.GE_LOCATION || 'global' }}
+      GCP_SERVICE_ACCOUNT: ${{ vars.GCP_SERVICE_ACCOUNT }}
       GCP_WIF_CONFIGURED: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && vars.GCP_SERVICE_ACCOUNT != '' }}
       GCP_CREDENTIALS_CONFIGURED: ${{ secrets.GCP_CREDENTIALS != '' }}
     steps:
@@ -94,7 +95,11 @@ jobs:
         run: |
           set -euo pipefail
           sleep 10
-          ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+          if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
+            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${RESOLVED_APP_URL}")"
+          else
+            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+          fi
           curl --retry 5 --retry-delay 5 --retry-connrefused -sf \
             -H "Authorization: Bearer ${ID_TOKEN}" \
             "${RESOLVED_APP_URL}/health" | jq .
@@ -108,7 +113,11 @@ jobs:
           DESCRIPTION="Intelligent procurement and inventory agent for Cymbal Coffee Roasters. Monitors real-time IoT telemetry, detects stockouts, creates purchase orders, and renders interactive A2UI cards."
 
           # Fetch the live agent card from the deployed Cloud Run service
-          ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+          if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
+            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${RESOLVED_APP_URL}")"
+          else
+            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+          fi
           AGENT_CARD="$(curl -sf -H "Authorization: Bearer ${ID_TOKEN}" "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json")"
           echo "Agent card fetched:"
           echo "${AGENT_CARD}" | jq .
