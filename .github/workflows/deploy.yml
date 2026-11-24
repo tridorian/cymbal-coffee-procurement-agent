@@ -102,13 +102,21 @@ jobs:
           set -euo pipefail
           sleep 10
           if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
-            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${TOKEN_AUDIENCE}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${TOKEN_AUDIENCE}" --include-email)"
           else
-            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${TOKEN_AUDIENCE}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${TOKEN_AUDIENCE}" --include-email)"
           fi
-          curl --retry 5 --retry-delay 5 --retry-connrefused -sf \
+          RESPONSE="$(curl --retry 5 --retry-delay 5 --retry-connrefused -sS -w "\n%{http_code}" \
             -H "Authorization: Bearer ${ID_TOKEN}" \
-            "${RESOLVED_APP_URL}/health" | jq .
+            "${RESOLVED_APP_URL}/health")"
+          HTTP_CODE="$(echo "${RESPONSE}" | tail -n1)"
+          BODY="$(echo "${RESPONSE}" | head -n -1)"
+          echo "Health check response (${HTTP_CODE}):"
+          echo "${BODY}" | jq . 2>/dev/null || echo "${BODY}"
+          if [ "${HTTP_CODE}" -ge 400 ]; then
+            echo "ERROR: Cloud Run health check failed with HTTP ${HTTP_CODE}"
+            exit 1
+          fi
 
       - name: Fetch live agent card and register in Gemini Enterprise
         if: ${{ env.GE_APP_ID != '' }}
@@ -120,9 +128,9 @@ jobs:
 
           # Fetch the live agent card from the deployed Cloud Run service
           if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
-            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${TOKEN_AUDIENCE}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${TOKEN_AUDIENCE}" --include-email)"
           else
-            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${TOKEN_AUDIENCE}")"
+            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${TOKEN_AUDIENCE}" --include-email)"
           fi
           AGENT_CARD="$(curl -sf -H "Authorization: Bearer ${ID_TOKEN}" "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json")"
           echo "Agent card fetched:"

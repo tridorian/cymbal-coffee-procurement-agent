@@ -78,5 +78,66 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_CREDENTIALS }}'
 
+      - name: Lint GitHub Actions workflows with actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          al_ver="1.7.7"
+          tmp_al="$(mktemp -d)"
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${al_ver}/actionlint_${al_ver}_linux_amd64.tar.gz" -o "${tmp_al}/actionlint.tar.gz"
+          tar -xzf "${tmp_al}/actionlint.tar.gz" -C "${tmp_al}" actionlint
+          "${tmp_al}/actionlint"
+          rm -rf "${tmp_al}"
+
       - name: Run unit tests with coverage gate
         run: touch .env && uv run pytest tests/unit/ --cov=app --cov-fail-under=80
+
+  container-smoke:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Build production Docker image
+        run: docker build -t cymbal-coffee-smoke:test .
+
+      - name: Run container smoke test (port 8080, /, /dashboard, /health, A2A card)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name cymbal-smoke \
+            --memory=2g \
+            -p 8080:8080 \
+            -e GOOGLE_CLOUD_PROJECT=gemini-ent-playground \
+            -e GOOGLE_CLOUD_LOCATION=global \
+            -e GOOGLE_GENAI_USE_VERTEXAI=true \
+            -e MOCK_LLM_FOR_TEST=TRUE \
+            cymbal-coffee-smoke:test
+          trap 'docker logs cymbal-smoke || true; docker rm -f cymbal-smoke || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8080/health >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl -sf http://127.0.0.1:8080/health | jq -e '.status == "healthy"'
+          # Verify "/" serves Cymbal Coffee dashboard directly without redirecting to /dev-ui/
+          ROOT_CODE="$(curl -s -o /tmp/root.html -w '%{http_code}' http://127.0.0.1:8080/)"
+          test "${ROOT_CODE}" = "200"
+          grep -q "Cymbal Coffee Roasters" /tmp/root.html
+
+          DASH_CODE="$(curl -s -o /tmp/dash.html -w '%{http_code}' http://127.0.0.1:8080/dashboard)"
+          test "${DASH_CODE}" = "200"
+          grep -q "Wake Up Demo" /tmp/dash.html
+
+          # Verify app boots in IDLE mode
+          curl -sf http://127.0.0.1:8080/api/dashboard/data | jq -e '.simulation.is_active == false'
+
+          # Verify A2A agent card is served
+          curl -sf http://127.0.0.1:8080/a2a/app/.well-known/agent-card.json | jq -e '.name != null'

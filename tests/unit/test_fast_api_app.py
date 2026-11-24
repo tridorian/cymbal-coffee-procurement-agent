@@ -44,10 +44,19 @@ def test_dashboard_endpoint():
 
 
 def test_dashboard_api_endpoints():
-    """Test dashboard data and simulation API routes."""
+    """Test dashboard data, health, and 60m default simulation API routes."""
+    res_health = client.get("/health")
+    assert res_health.status_code == 200
+    assert res_health.json()["status"] == "healthy"
+
     res_data = client.get("/api/dashboard/data")
     assert res_data.status_code == 200
     assert "stores" in res_data.json()
+
+    res_default_start = client.post("/api/dashboard/simulation/start")
+    assert res_default_start.status_code == 200
+    assert res_default_start.json()["status"] == "SIMULATION_STARTED"
+    assert res_default_start.json()["duration_minutes"] == 60
 
     res_start = client.post(
         "/api/dashboard/simulation/start", json={"duration_minutes": 10}
@@ -122,13 +131,16 @@ def test_resolve_app_url_uses_request_base_url(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_app_lifespan(monkeypatch):
-    """Lifespan should initialize runner and attach A2A routes."""
+    """Lifespan should boot in IDLE mode, initialize runner, and attach A2A routes."""
     monkeypatch.setenv("MOCK_LLM_FOR_TEST", "TRUE")
     from app.fast_api_app import lifespan
+    from app.tools.telemetry import get_simulation_status, stop_simulation
 
+    stop_simulation()
     async with lifespan(app):
         assert hasattr(app.state, "runner")
         assert app.state.agent_app_name == "app"
+        assert get_simulation_status()["is_active"] is False
         # Test mock_run_async
         events = []
         async for event in app.state.runner.run_async():
