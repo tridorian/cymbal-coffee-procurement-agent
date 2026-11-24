@@ -119,8 +119,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app_url=_configured_app_url(),
     )
 
-    # Auto-start the simulation so the backend always has live data on boot
-    start_simulation(duration_minutes=120)
+    # Start in IDLE / standby mode; operators wake the 60-minute demo session
+    # from the dashboard so Cloud Run can scale to zero when inactive.
 
     yield
 
@@ -207,7 +207,7 @@ def get_dashboard_data() -> dict:
 
 
 class StartSimRequest(BaseModel):
-    duration_minutes: int = 120
+    duration_minutes: int = 60
 
 
 @app.post("/api/dashboard/simulation/start")

@@ -623,14 +623,22 @@
                 <div class="card" style="border: 1px solid rgba(245, 158, 11, 0.4); background: linear-gradient(135deg, rgba(22, 28, 45, 0.9), rgba(245, 158, 11, 0.08));">
                     <div class="card-title">
                         <span>📡 Live Order Stream</span>
-                        <span id="simStatusTag" class="bin-status-tag tag-warning">LIVE</span>
+                        <span id="simStatusTag" class="bin-status-tag tag-optimal">IDLE</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 0.8rem;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 0.8rem;">
                         <span id="orderCountBadge" class="bin-status-tag tag-optimal" style="font-size:0.75rem;">0 orders</span>
-                        <span style="font-size: 0.72rem; color: var(--text-muted);">Session uptime: <span id="uptimeDisplay" style="color: var(--accent-amber); font-family: 'JetBrains Mono', monospace;">00:00</span></span>
+                        <span style="font-size: 0.72rem; color: var(--text-muted);"><span id="timerLabel">Auto-idle in:</span> <span id="uptimeDisplay" style="color: var(--accent-amber); font-family: 'JetBrains Mono', monospace;">--:--</span></span>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.8rem;">
+                        <button id="btnStartDemo" class="btn-action" onclick="startDemoSession(60)" style="margin-top: 0;">
+                            ▶️ Wake Up Demo (60m)
+                        </button>
+                        <button id="btnStopDemo" class="btn-action btn-secondary" onclick="stopDemoSession()" style="margin-top: 0; display: none;">
+                            ⏸️ Put to Idle
+                        </button>
                     </div>
                     <div id="orderLogList" style="max-height: 200px; overflow-y: auto; font-size: 0.78rem; font-family: 'JetBrains Mono', monospace; display: flex; flex-direction: column; gap: 0.35rem; padding-right: 0.3rem;">
-                        <div style="color: var(--text-muted); font-style: italic;">Waiting for orders…</div>
+                        <div style="color: var(--text-muted); font-style: italic;">Standby mode — click Wake Up Demo to start live order stream.</div>
                     </div>
                 </div>
 
@@ -835,25 +843,52 @@
             }
         }
 
+        let pollTimer = null;
+        let isDemoActive = false;
+
+        function startPolling() {
+            if (!pollTimer && isDemoActive && document.visibilityState === 'visible') {
+                pollTimer = setInterval(fetchTelemetry, 4000);
+            }
+        }
+
+        function stopPolling() {
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        }
+
         function updateSimUI(sim) {
             const statusTag = document.getElementById('simStatusTag');
             const orderLogList = document.getElementById('orderLogList');
             const orderCountBadge = document.getElementById('orderCountBadge');
             const uptimeDisplay = document.getElementById('uptimeDisplay');
+            const timerLabel = document.getElementById('timerLabel');
+            const btnStart = document.getElementById('btnStartDemo');
+            const btnStop = document.getElementById('btnStopDemo');
 
-            // Simulation is always on — always show LIVE
-            statusTag.className = 'bin-status-tag tag-warning';
-            statusTag.innerText = 'LIVE';
+            isDemoActive = Boolean(sim && sim.is_active);
 
-            // Uptime display
-            if (sim && sim.uptime_seconds !== undefined) {
-                const u = sim.uptime_seconds || 0;
-                const hh = String(Math.floor(u / 3600)).padStart(2, '0');
-                const mm = String(Math.floor((u % 3600) / 60)).padStart(2, '0');
-                const ss = String(u % 60).padStart(2, '0');
-                if (uptimeDisplay) uptimeDisplay.innerText = `${hh}:${mm}:${ss}`;
-            } else if (sim && sim.remaining_seconds !== undefined) {
-                // Fallback for old API
+            if (isDemoActive) {
+                statusTag.className = 'bin-status-tag tag-warning';
+                statusTag.innerText = 'LIVE';
+                if (timerLabel) timerLabel.innerText = 'Auto-idle in:';
+                if (btnStart) btnStart.innerText = '🔄 Reset 60m Timer';
+                if (btnStop) btnStop.style.display = 'flex';
+                startPolling();
+            } else {
+                statusTag.className = 'bin-status-tag tag-optimal';
+                statusTag.innerText = 'IDLE';
+                if (timerLabel) timerLabel.innerText = 'Status:';
+                if (uptimeDisplay) uptimeDisplay.innerText = 'Standby (scale-to-zero)';
+                if (btnStart) btnStart.innerText = '▶️ Wake Up Demo (60m)';
+                if (btnStop) btnStop.style.display = 'none';
+                // Stop polling so Cloud Run can spin down to 0 instances automatically
+                stopPolling();
+            }
+
+            if (isDemoActive && sim && sim.remaining_seconds !== undefined) {
                 const sec = sim.remaining_seconds;
                 const hh = String(Math.floor(sec / 3600)).padStart(2, '0');
                 const mm = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
@@ -861,7 +896,6 @@
                 if (uptimeDisplay) uptimeDisplay.innerText = `${hh}:${mm}:${ss}`;
             }
 
-            // Order stream — show regardless of is_active
             const orders = (sim && (sim.simulated_orders || [])).slice(0, 10);
             const totalOrders = sim && (sim.total_orders_processed || 0);
 
@@ -881,10 +915,27 @@
                             <span style="color: var(--accent-rose); white-space:nowrap;">${o.impact || ''}</span>
                         </div>
                     `).join('');
-                } else {
+                } else if (isDemoActive) {
                     orderLogList.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Simulation warming up…</div>';
+                } else {
+                    orderLogList.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">Standby mode — click Wake Up Demo to start live 60-min stream.</div>';
                 }
             }
+        }
+
+        async function startDemoSession(durationMinutes = 60) {
+            await fetch('/api/dashboard/simulation/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ duration_minutes: durationMinutes })
+            });
+            await fetchTelemetry();
+        }
+
+        async function stopDemoSession() {
+            stopPolling();
+            await fetch('/api/dashboard/simulation/stop', { method: 'POST' });
+            await fetchTelemetry();
         }
 
 
@@ -936,9 +987,18 @@
             setTimeout(() => toast.classList.remove('show'), 2500);
         }
 
-        // Auto refresh every 4 seconds
+        // Pause polling when tab is hidden; resume only if demo is active
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && isDemoActive) {
+                fetchTelemetry();
+                startPolling();
+            } else {
+                stopPolling();
+            }
+        });
+
+        // Initial snapshot on load (polling starts only while demo session is active)
         fetchTelemetry();
-        setInterval(fetchTelemetry, 4000);
     </script>
 </body>
 </html>
