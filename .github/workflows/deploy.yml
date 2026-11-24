@@ -87,26 +87,80 @@ jobs:
             --region "${REGION}" \
             --project "${PROJECT_ID}" \
             --format='value(status.url)')"
+          DEPLOYED_IMAGE="$(gcloud run services describe "${SERVICE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --format='value(spec.template.spec.containers[0].image)')"
+          IAP_ENABLED="$(gcloud run services describe "${SERVICE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --format='value(metadata.annotations."run.googleapis.com/iap-enabled")')"
           RESOLVED_APP_URL="${APP_URL:-$LIVE_URL}"
           RESOLVED_APP_URL="${RESOLVED_APP_URL%/}"
-          echo "RESOLVED_APP_URL=${RESOLVED_APP_URL}" >> "${GITHUB_ENV}"
+          {
+            echo "RESOLVED_APP_URL=${RESOLVED_APP_URL}"
+            echo "DEPLOYED_IMAGE=${DEPLOYED_IMAGE}"
+            echo "IAP_ENABLED=${IAP_ENABLED:-false}"
+          } >> "${GITHUB_ENV}"
           echo "Deployed Cloud Run service URL: ${RESOLVED_APP_URL}"
+          echo "Deployed image: ${DEPLOYED_IMAGE} (IAP=${IAP_ENABLED:-false})"
 
-      - name: Wait for Cloud Run to be healthy
+      - name: Verify Cloud Run health and extract live agent card
         shell: bash
         run: |
           set -euo pipefail
-          sleep 10
-          if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
-            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${RESOLVED_APP_URL}")"
-          else
-            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+          READY_STATUS="$(gcloud run services describe "${SERVICE}" \
+            --region "${REGION}" \
+            --project "${PROJECT_ID}" \
+            --format=json | jq -r '.status.conditions[] | select(.type == "Ready") | .status')"
+          echo "Cloud Run Ready status: ${READY_STATUS}"
+          if [ "${READY_STATUS}" != "True" ]; then
+            echo "ERROR: Cloud Run service ${SERVICE} is not Ready"
+            exit 1
           fi
-          curl --retry 5 --retry-delay 5 --retry-connrefused -sf \
-            -H "Authorization: Bearer ${ID_TOKEN}" \
-            "${RESOLVED_APP_URL}/health" | jq .
 
-      - name: Fetch live agent card and register in Gemini Enterprise
+          if [ "${IAP_ENABLED}" = "true" ]; then
+            echo "Cloud Run direct IAP is enabled (Google-managed OAuth client); verifying exact deployed container image locally..."
+            gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+            docker pull "${DEPLOYED_IMAGE}"
+            docker run -d --name deployed-verify \
+              --memory=2g \
+              -p 8080:8080 \
+              -e GOOGLE_CLOUD_PROJECT="${PROJECT_ID}" \
+              -e GOOGLE_CLOUD_LOCATION=global \
+              -e GOOGLE_GENAI_USE_VERTEXAI=true \
+              -e APP_URL="${RESOLVED_APP_URL}" \
+              -e MOCK_LLM_FOR_TEST=TRUE \
+              "${DEPLOYED_IMAGE}"
+            trap 'docker rm -f deployed-verify >/dev/null 2>&1 || true' EXIT
+
+            for _ in $(seq 1 30); do
+              if curl -sf http://127.0.0.1:8080/health >/dev/null 2>&1; then
+                break
+              fi
+              sleep 2
+            done
+
+            curl -sf http://127.0.0.1:8080/health | jq -e '.status == "healthy"'
+            curl -sf http://127.0.0.1:8080/a2a/app/.well-known/agent-card.json > /tmp/agent-card.json
+          else
+            sleep 10
+            if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
+              ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${RESOLVED_APP_URL}" --include-email)"
+            else
+              ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}" --include-email)"
+            fi
+            curl --retry 5 --retry-delay 5 --retry-connrefused -sf \
+              -H "Authorization: Bearer ${ID_TOKEN}" \
+              "${RESOLVED_APP_URL}/health" | jq -e '.status == "healthy"'
+            curl -sf -H "Authorization: Bearer ${ID_TOKEN}" \
+              "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json" > /tmp/agent-card.json
+          fi
+
+          echo "Agent card extracted:"
+          jq . /tmp/agent-card.json
+
+      - name: Register agent card in Gemini Enterprise
         if: ${{ env.GE_APP_ID != '' }}
         shell: bash
         run: |
@@ -114,18 +168,8 @@ jobs:
           DISPLAY_NAME="Cymbal Coffee Procurement Agent"
           DESCRIPTION="Intelligent procurement and inventory agent for Cymbal Coffee Roasters. Monitors real-time IoT telemetry, detects stockouts, creates purchase orders, and renders interactive A2UI cards."
 
-          # Fetch the live agent card from the deployed Cloud Run service
-          if [ -n "${GCP_SERVICE_ACCOUNT}" ]; then
-            ID_TOKEN="$(gcloud auth print-identity-token --impersonate-service-account="${GCP_SERVICE_ACCOUNT}" --audiences="${RESOLVED_APP_URL}")"
-          else
-            ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
-          fi
-          AGENT_CARD="$(curl -sf -H "Authorization: Bearer ${ID_TOKEN}" "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json")"
-          echo "Agent card fetched:"
-          echo "${AGENT_CARD}" | jq .
-
           # Ensure the url field in the card points to the A2A RPC path (not agent-card path)
-          AGENT_CARD="$(echo "${AGENT_CARD}" | jq --arg url "${RESOLVED_APP_URL}/a2a/app" '.url = $url')"
+          AGENT_CARD="$(jq --arg url "${RESOLVED_APP_URL}/a2a/app" '.url = $url' /tmp/agent-card.json)"
 
           # Serialize to an escaped JSON string for the jsonAgentCard field
           JSON_AGENT_CARD="$(echo "${AGENT_CARD}" | jq -c . | jq -Rs .)"
