@@ -97,9 +97,11 @@ jobs:
             --format='value(metadata.annotations."run.googleapis.com/iap-enabled")')"
           RESOLVED_APP_URL="${APP_URL:-$LIVE_URL}"
           RESOLVED_APP_URL="${RESOLVED_APP_URL%/}"
-          echo "RESOLVED_APP_URL=${RESOLVED_APP_URL}" >> "${GITHUB_ENV}"
-          echo "DEPLOYED_IMAGE=${DEPLOYED_IMAGE}" >> "${GITHUB_ENV}"
-          echo "IAP_ENABLED=${IAP_ENABLED:-false}" >> "${GITHUB_ENV}"
+          {
+            echo "RESOLVED_APP_URL=${RESOLVED_APP_URL}"
+            echo "DEPLOYED_IMAGE=${DEPLOYED_IMAGE}"
+            echo "IAP_ENABLED=${IAP_ENABLED:-false}"
+          } >> "${GITHUB_ENV}"
           echo "Deployed Cloud Run service URL: ${RESOLVED_APP_URL}"
           echo "Deployed image: ${DEPLOYED_IMAGE} (IAP=${IAP_ENABLED:-false})"
 
