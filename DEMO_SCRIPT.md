@@ -7,11 +7,10 @@
 
 | Resource | Link / Details |
 | --- | --- |
-| **Gemini Enterprise Agent UI** | [Launch Live Agent Chat (`12412823214350426517`)](https://vertexaisearch.cloud.google.com/home/cid/1f20f8ae-0e38-46e8-a86f-2e10fb1c8318/r/agent/12412823214350426517) |
-| **Gemini Enterprise Console** | [GE Agents Console](https://console.cloud.google.com/gemini-enterprise/locations/global/engines/cymbal-coffee-roasters-dem_1785169638752/agentic/agents?project=hackathon-y26) |
-| **Cloud Run Control Panel Dashboard** | [https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app/dashboard) |
-| **GCP Project ID** | `hackathon-y26` |
-| **Reasoning Engine ID** | `projects/922201496337/locations/us-central1/reasoningEngines/7462483824006397952` |
+| **Gemini Enterprise Agent UI** | [Launch Live Gemini Enterprise App](https://vertexaisearch.cloud.google.com/home/cid/c89d9d0a-808a-4b72-8a6f-6240d8882229?hl=en_US) |
+| **Gemini Enterprise Console** | [GE Agents Console](https://console.cloud.google.com/gemini-enterprise/locations/global/engines/cymbal-coffee-ge_1795523894616/agentic/agents?project=gemini-ent-playground) |
+| **Cloud Run Control Panel Dashboard** | [https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard) |
+| **GCP Project ID** | `gemini-ent-playground` |
 | **Eval Pass Rate** | **100% (5/5 cases passed, mean score 4.40/5.0)** |
 
 ---
@@ -58,7 +57,7 @@ Detailed Results:
 ### Phase 1: Cloud Run Control Panel & IoT Simulator (2 Minutes)
 
 1. **Open the Cloud Run Control Panel Dashboard**:
-   - Open [https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app/dashboard) in your browser.
+   - Open [https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard) in your browser.
    - Click **▶️ Start 2-Hour Demo Session** to start the synthetic IoT simulation engine.
 2. **Inject a Simulated Low-Stock Event**:
    - Click the red button: **🚨 Trigger Critical Bean Stock (12% SF)**.
@@ -68,7 +67,7 @@ Detailed Results:
 
 ### Phase 2: Live Gemini Enterprise Chat Demo (5 Minutes)
 
-Open **[Gemini Enterprise Live Chat](https://vertexaisearch.cloud.google.com/home/cid/1f20f8ae-0e38-46e8-a86f-2e10fb1c8318/r/agent/12412823214350426517)** and execute the following 4-step sequence:
+Open **[Gemini Enterprise Live Chat](https://vertexaisearch.cloud.google.com/home/cid/c89d9d0a-808a-4b72-8a6f-6240d8882229?hl=en_US)** and execute the following 4-step sequence:
 
 #### Step 1: Real-time Telemetry Health Check
 * **Prompt to Copy & Paste**:
@@ -119,7 +118,7 @@ Open **[Gemini Enterprise Live Chat](https://vertexaisearch.cloud.google.com/hom
 
 ### Phase 3: Verify Results on Cloud Run Dashboard (1 Minute)
 
-1. Switch back to the [Cloud Run Control Panel Dashboard](https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app/dashboard).
+1. Switch back to the [Cloud Run Control Panel Dashboard](https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard).
 2. Show the **Generated Purchase Orders (POs)** table — `PO-CYMBAL-1001` now appears in real time under the table!
 
 ---

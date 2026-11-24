@@ -44,7 +44,7 @@ sys.path.insert(0, PARENT_DIR)
 load_dotenv(os.path.join(PARENT_DIR, ".env"))
 
 # Set env vars before importing anything from app
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "hackathon-y26")
+os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "gemini-ent-playground")
 os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "true")
 
