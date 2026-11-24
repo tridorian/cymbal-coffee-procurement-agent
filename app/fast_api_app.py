@@ -139,6 +139,17 @@ app: FastAPI = get_fast_api_app(
 app.title = "cymbal-coffee-procurement-agent"
 app.description = "API for interacting with the Agent cymbal-coffee-procurement-agent"
 
+# Remove ADK's default "/" -> "/dev-ui/" redirect so "/" serves the Cymbal Coffee Dashboard
+# directly (the ADK Dev UI remains reachable at "/dev-ui/").
+app.router.routes = [
+    route
+    for route in app.router.routes
+    if not (
+        getattr(route, "path", None) == "/"
+        and "GET" in getattr(route, "methods", set())
+    )
+]
+
 
 @app.middleware("http")
 async def resolve_app_url(request: Request, call_next):

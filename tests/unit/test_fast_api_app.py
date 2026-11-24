@@ -33,12 +33,14 @@ def test_feedback_endpoint_invalid():
 
 
 def test_dashboard_endpoint():
-    """GET / and /dashboard should return HTML dashboard."""
-    res1 = client.get("/")
+    """GET / and /dashboard should both serve the Cymbal Coffee HTML dashboard."""
+    res1 = client.get("/", follow_redirects=False)
     assert res1.status_code == 200
+    assert "Cymbal Coffee Roasters" in res1.text
 
-    res2 = client.get("/dashboard")
+    res2 = client.get("/dashboard", follow_redirects=False)
     assert res2.status_code == 200
+    assert "Cymbal Coffee Roasters" in res2.text
 
 
 def test_dashboard_api_endpoints():
