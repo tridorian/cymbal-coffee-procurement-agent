@@ -25,8 +25,8 @@ def test_deploy_workflow_contract():
     assert "--min-instances 0" in raw
     assert "--no-allow-unauthenticated" in raw
     assert "--allow-unauthenticated" not in raw
-    assert "IAP_CLIENT_ID" in raw
-    assert "TOKEN_AUDIENCE" in raw
+    assert "IAP_ENABLED" in raw
+    assert "DEPLOYED_IMAGE" in raw
     assert "--include-email" in raw
     assert "hackathon-y26" not in raw
     assert "922201496337" not in raw
