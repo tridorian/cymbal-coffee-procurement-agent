@@ -75,8 +75,10 @@ jobs:
             --source . \
             --region "${REGION}" \
             --project "${PROJECT_ID}" \
+            --memory 2Gi \
+            --cpu 2 \
             --set-env-vars "${ENV_VARS}" \
-            --allow-unauthenticated
+            --no-allow-unauthenticated
 
           LIVE_URL="$(gcloud run services describe "${SERVICE}" \
             --region "${REGION}" \
@@ -92,7 +94,9 @@ jobs:
         run: |
           set -euo pipefail
           sleep 10
+          ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
           curl --retry 5 --retry-delay 5 --retry-connrefused -sf \
+            -H "Authorization: Bearer ${ID_TOKEN}" \
             "${RESOLVED_APP_URL}/health" | jq .
 
       - name: Fetch live agent card and register in Gemini Enterprise
@@ -104,7 +108,8 @@ jobs:
           DESCRIPTION="Intelligent procurement and inventory agent for Cymbal Coffee Roasters. Monitors real-time IoT telemetry, detects stockouts, creates purchase orders, and renders interactive A2UI cards."
 
           # Fetch the live agent card from the deployed Cloud Run service
-          AGENT_CARD="$(curl -sf "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json")"
+          ID_TOKEN="$(gcloud auth print-identity-token --audiences="${RESOLVED_APP_URL}")"
+          AGENT_CARD="$(curl -sf -H "Authorization: Bearer ${ID_TOKEN}" "${RESOLVED_APP_URL}/a2a/app/.well-known/agent-card.json")"
           echo "Agent card fetched:"
           echo "${AGENT_CARD}" | jq .
 
