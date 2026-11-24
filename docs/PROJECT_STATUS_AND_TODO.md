@@ -29,7 +29,7 @@
 - [x] RizzCharts Custom Catalog pattern renderer (`Chart` component) in `local_tester/index.html`.
 
 ### 4. Cloud Run Backend Health Probing & Offline Warning System
-- [x] `check_cloud_run_backend_health()` function and registered `check_backend_status` tool probing `https://cymbal-coffee-procurement-dashboard-922201496337.us-central1.run.app/health`.
+- [x] `check_cloud_run_backend_health()` function and registered `check_backend_status` tool probing `https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/health`.
 - [x] Automated attachment of `cloud_run_backend` health metadata to all telemetry tool outputs.
 - [x] Warning A2UI Card generation guidance in `UI_DESCRIPTION` when backend service is offline.
 - [x] Live heartbeat status banner (`🟢 Backend Online` / `🔴 Backend Offline`) in `local_tester/index.html`.
