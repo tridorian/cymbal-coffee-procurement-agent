@@ -7,10 +7,11 @@
 
 | Resource | Link / Details |
 | --- | --- |
-| **Gemini Enterprise Agent UI** | [Launch Live Gemini Enterprise App](https://vertexaisearch.cloud.google.com/home/cid/c89d9d0a-808a-4b72-8a6f-6240d8882229?hl=en_US) |
+| **Gemini Enterprise Agent UI** | [Launch Live Agent Chat (`12250896375263118891`)](https://vertexaisearch.cloud.google.com/home/cid/c89d9d0a-808a-4b72-8a6f-6240d8882229/r/agent/12250896375263118891) |
+| **Gemini Enterprise App Home** | [Open Gemini Enterprise App](https://vertexaisearch.cloud.google.com/home/cid/c89d9d0a-808a-4b72-8a6f-6240d8882229?hl=en_US) |
 | **Gemini Enterprise Console** | [GE Agents Console](https://console.cloud.google.com/gemini-enterprise/locations/global/engines/cymbal-coffee-ge_1795523894616/agentic/agents?project=gemini-ent-playground) |
-| **Cloud Run Control Panel Dashboard** | [https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard) |
-| **GCP Project ID** | `gemini-ent-playground` |
+| **Cloud Run Control Panel Dashboard** | [https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard) *(IAM-protected — use `gcloud run services proxy` below for local browser access)* |
+| **GCP Project ID** | `gemini-ent-playground` (`536372737225`) |
 | **Eval Pass Rate** | **100% (5/5 cases passed, mean score 4.40/5.0)** |
 
 ---
@@ -57,7 +58,11 @@ Detailed Results:
 ### Phase 1: Cloud Run Control Panel & IoT Simulator (2 Minutes)
 
 1. **Open the Cloud Run Control Panel Dashboard**:
-   - Open [https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard) in your browser.
+   - Because `gemini-ent-playground` enforces Domain Restricted Sharing (`--no-allow-unauthenticated`), start an authenticated local proxy first:
+     ```bash
+     gcloud run services proxy cymbal-coffee-procurement-dashboard --region=us-central1 --project=gemini-ent-playground
+     ```
+   - Open `http://localhost:8080/dashboard` (proxying [https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard](https://cymbal-coffee-procurement-dashboard-536372737225.us-central1.run.app/dashboard)) in your browser.
    - Click **▶️ Start 2-Hour Demo Session** to start the synthetic IoT simulation engine.
 2. **Inject a Simulated Low-Stock Event**:
    - Click the red button: **🚨 Trigger Critical Bean Stock (12% SF)**.
@@ -67,7 +72,7 @@ Detailed Results:
 
 ### Phase 2: Live Gemini Enterprise Chat Demo (5 Minutes)
 
-Open **[Gemini Enterprise Live Chat](https://vertexaisearch.cloud.google.com/home/cid/c89d9d0a-808a-4b72-8a6f-6240d8882229?hl=en_US)** and execute the following 4-step sequence:
+Open **[Gemini Enterprise Live Chat (`12250896375263118891`)](https://vertexaisearch.cloud.google.com/home/cid/c89d9d0a-808a-4b72-8a6f-6240d8882229/r/agent/12250896375263118891)** and execute the following 4-step sequence:
 
 #### Step 1: Real-time Telemetry Health Check
 * **Prompt to Copy & Paste**:
